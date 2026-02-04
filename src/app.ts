@@ -1,15 +1,11 @@
 // src/app.ts
 import express from 'express';
-import './database/connection'; // MongoDB connection
+import './database/connection';
+import categoryRoutes from './routes/category-routes';
 
 const app = express();
 
-// Middleware example (optional)
 app.use(express.json());
-
-// Example route
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
+app.use('/api', categoryRoutes);
 
 export default app;
