@@ -61,6 +61,44 @@ class AuthController {
       });
     }
   }
+        static async login(req:Request , res:Response){
+            try {
+                const {email, password} = req.body;
+                const user = await User.findOne({email});
+                if (!user) {
+                    res.status(404).json({
+                        success: false,
+                        message: "User not found",
+                    });
+                    return;
+                }
+                const isPasswordValid = await bcrypt.compare(password, user.password);
+                if (!isPasswordValid) {
+                    res.status(401).json({
+                        success: false,
+                        message: "Invalid credentials",
+                    });
+                    return;
+                }
+                res.status(200).json({
+                    success: true,
+                    message: "Login successful",
+                    data: {
+                        id: user._id,
+                        username: user.username,
+                        email: user.email,
+                        role: user.role,
+                    },
+                });
+            } catch (error :any) {
+                 console.error("Login error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        stack:error.stack
+      });
+            }
+        }
 }
 
 export default AuthController;
