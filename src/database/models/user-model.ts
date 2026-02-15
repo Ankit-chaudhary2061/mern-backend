@@ -2,6 +2,7 @@
 
 import mongoose from "mongoose";
 import { UserRole } from "../../types/enum-types";
+import { url } from "inspector";
 
 
 
@@ -36,7 +37,35 @@ const userSchema = new mongoose.Schema(
     isVerified:{
         type:Boolean,
         default:false
+    },
+  phoneNumber: {
+  type: Number,
+  required: false
+},
+profileImage: {
+  type: {
+    url: {
+      type: String,
+      required: true
+    },
+    public_id: {
+      type: String, 
+      required: false
     }
+  },
+  required: false,
+  default: null  
+},
+otp: {
+  type: String,
+  select: false
+},
+otpExpires: {
+  type: Date
+}
+
+
+
   },
   {
     timestamps: true,
