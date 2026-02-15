@@ -13,5 +13,9 @@ const router:Router =  express.Router();
 
 router.post("/register",  upload.single("image"),AuthController.register);
 router.post("/login", AuthController.login);
+router.post("/verfiy-otp", AuthController.otpVerfication);
+router.post("/resend-otp", AuthController.resendOtp);
+
+
 
 export default router
