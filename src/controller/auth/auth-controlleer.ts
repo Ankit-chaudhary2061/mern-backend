@@ -1,8 +1,10 @@
-import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
+import { NextFunction, Request, Response } from "express";
+import bcrypt, { compare } from "bcryptjs";
 import User from "../../database/models/user-model";
 import { UserRole } from "../../types/enum-types";
 import { createOtp } from "../../utils/otp-utils";
+import { sendMail } from "../../utils/send-mail";
+import { otpVerificationHtml } from "../../utils/email-utils";
 
 
 
@@ -13,7 +15,7 @@ class AuthController {
     const { username, email, password } = req.body;
     const imageUrl = req.file ? req.file.path : null;
 
-    // 1️⃣ Validate input
+    
     if (!username || !email || !password) {
       res.status(400).json({
         success: false,
@@ -22,7 +24,7 @@ class AuthController {
       return;
     }
 
-    // 2️⃣ Check if user exists
+  
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       res.status(409).json({
@@ -50,6 +52,13 @@ class AuthController {
       otpExpires: Date.now() + 5 * 60 * 1000, 
       profileImage: imageUrl ? { url: imageUrl } : null,
     });
+await sendMail({
+  to: user.email,
+  subject: "Verify Your Email - OTP Code",
+  html: otpVerificationHtml(user, otp),
+});
+
+
 
    await user.save()
 
@@ -62,12 +71,14 @@ class AuthController {
         email: user.email,
       },
     });
-
-  } catch (error) {
+    
+  } catch (error :any ) {
     console.error("Register error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
+        stack:error.stack
+
     });
   }
 }
@@ -110,6 +121,74 @@ class AuthController {
       });
             }
         }
+        static async otpVerfication(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+          try {
+           const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+   const user = await User.findOne({ email }).select("+otp +otpExpires");
+
+if (!user) {
+  return res.status(404).json({
+    success: false,
+    message: "User not found",
+  });
+}
+if (!user.otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    if (user.otpExpires) {
+  const isOtpExpired = new Date(Date.now()) > user.otpExpires;
+
+  if (isOtpExpired) {
+    return res.status(400).json({
+      success: false,
+      message: "OTP has expired. Please request a new one.",
+    });
+  }
+}
+  const otpMatch = await bcrypt.compare(otp, user.otp);
+
+    if (!otpMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully 🎉",
+    });
+
+  } catch (error: any) {
+    console.error("OTP verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      stack: error.stack,
+    });
+  }
+}
 }
 
 export default AuthController;
