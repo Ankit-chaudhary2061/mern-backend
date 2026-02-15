@@ -20,5 +20,15 @@ const storage = new CloudinaryStorage({
     };
   },
 });
+export const deleteFromCloudinary = async (publicId: string) => {
+  if (!publicId) return;
+
+  try {
+    await cloudinary.uploader.destroy(publicId);
+    console.log("✅ Image deleted from Cloudinary:", publicId);
+  } catch (error) {
+    console.error("❌ Failed to delete image:", error);
+  }
+};
 
 export default storage;

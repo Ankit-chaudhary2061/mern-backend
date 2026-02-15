@@ -6,18 +6,29 @@ const brandSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      unique: true
+      unique: true,
     },
-    logo: {
+
+    description: {
       type: String,
       required: true,
-      trim: true
-  
-    }
+      trim: true,
+    },
+
+    logo: {
+      public_id: {
+        type: String,
+        required: true,
+      },
+      path: {
+        type: String,
+        required: true,
+      },
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
-export default mongoose.model("Brand", brandSchema);
+export const Brand = mongoose.model("Brand", brandSchema);
