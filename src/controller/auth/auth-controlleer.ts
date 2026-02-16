@@ -5,6 +5,8 @@ import { UserRole } from "../../types/enum-types";
 import { createOtp, resend_Otp } from "../../utils/otp-utils";
 import { sendMail } from "../../utils/send-mail";
 import { otpVerificationHtml } from "../../utils/email-utils";
+import { signAccessToken } from "../../utils/jwt-utills";
+import { access } from "fs";
 
 
 
@@ -121,8 +123,19 @@ static async login(req: Request, res: Response) {
         message: "Invalid credentials",
       });
     }
+    const access_token = signAccessToken({
+      id:user.id,
+      email:user.email,
+      role:user.role
+    })
+    res.cookie('access_token', access_token,{
+      httpOnly:process.env.NODE_ENV === 'development' ? false:true,
+      sameSite:process.env.NODE_ENV === 'development' ? 'lax':'none',
+      secure:process.env.NODE_ENV === 'development' ? false:true,
+      maxAge: 30 * 24 * 60 * 60 * 1000  
 
-    return res.status(200).json({
+
+    }).status(200).json({
       success: true,
       message: "Login successful",
       data: {
@@ -130,6 +143,7 @@ static async login(req: Request, res: Response) {
         username: user.username,
         email: user.email,
         role: user.role,
+        token:access_token
       },
     });
 

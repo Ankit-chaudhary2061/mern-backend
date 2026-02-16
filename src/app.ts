@@ -5,12 +5,13 @@ import categoryRoutes from './routes/category-routes';
 import authRoutes from './routes/auth-routes';
 import userRoutes from './routes/user-route';
 import brandRoutes from './routes/brand-routes';
-
+import cookieParser from 'cookie-parser';
 
 
 
 const app = express();
 
+app.use(cookieParser())
 app.use(express.json());
 app.use('/api', categoryRoutes);
 app.use('/api', authRoutes);
