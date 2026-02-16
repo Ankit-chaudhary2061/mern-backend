@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Brand } from "../../database/models/brand-model";
-import { deleteFromCloudinary } from "../../middleware/middleware-cloudinary";
+import storage, { deleteFromCloudinary } from "../../middleware/middleware-cloudinary";
 
 class BrandController {
   static async getAllBrand(req: Request, res: Response) {
@@ -151,13 +151,69 @@ if (brand.logo?.public_id) {
     });
   }
 }
-static async updateBrand(req:Request, res:Response){
-    try {
-        
-    } catch (error) {
-        
+static async updateBrand(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const imageUrl = req.file ? req.file.path : null;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Brand id is required",
+      });
     }
+
+    const brand = await Brand.findById(id);
+
+    if (!brand) {
+      return res.status(404).json({
+        success: false,
+        message: "Brand not found",
+      });
+    }
+
+    if (!name || !description) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide required data",
+      });
+    }
+
+    
+    brand.name = name;
+    brand.description = description;
+
+    
+    if (imageUrl && req.file) {
+      if (brand.logo?.public_id) {
+        await deleteFromCloudinary(brand.logo.public_id);
+      }
+
+      brand.logo = {
+        public_id: req.file.filename,
+        path: imageUrl,
+      };
+    }
+
+    await brand.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Brand updated successfully",
+      data: brand,
+    });
+
+  } catch (error: any) {
+    console.error("Update brand error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update brand",
+      stack: error.stack,
+    });
+  }
 }
+
 
 }
 

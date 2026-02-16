@@ -15,4 +15,6 @@ const router:Router =  express.Router();
 router.get("/brands", BrandController.getAllBrand)
 router.get("/brand/:id", BrandController.singleBrand);
 router.post('/brand',upload.single('logo') ,BrandController.createBrand)
+router.patch('/brand/:id',upload.single('logo') ,BrandController.updateBrand)
+
 export default router

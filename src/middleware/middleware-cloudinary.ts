@@ -14,9 +14,9 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
     return {
-      folder: "broadway", // Correct spelling
-      allowed_formats: ["jpg", "png", "jpeg", "webp"], // optional
-      public_id: file.originalname.split(".")[0], // optional: use original name
+      folder: "broadway", 
+      allowed_formats: ["jpg", "png", "jpeg", "webp"], 
+      public_id: file.originalname.split(".")[0], 
     };
   },
 });
@@ -25,9 +25,9 @@ export const deleteFromCloudinary = async (publicId: string) => {
 
   try {
     await cloudinary.uploader.destroy(publicId);
-    console.log("✅ Image deleted from Cloudinary:", publicId);
+    console.log("Image deleted from Cloudinary:", publicId);
   } catch (error) {
-    console.error("❌ Failed to delete image:", error);
+    console.error("Failed to delete image:", error);
   }
 };
 
