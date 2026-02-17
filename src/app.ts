@@ -6,7 +6,7 @@ import authRoutes from './routes/auth-routes';
 import userRoutes from './routes/user-route';
 import brandRoutes from './routes/brand-routes';
 import cookieParser from 'cookie-parser';
-
+import productRoutes from './routes/product-routes'
 
 
 const app = express();
@@ -17,6 +17,8 @@ app.use('/api', categoryRoutes);
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', brandRoutes);
+app.use('/api', productRoutes);
+
 
 
 

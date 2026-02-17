@@ -5,3 +5,5 @@ export interface IJwtPayload {
   role: UserRole;
   email: string;
 }
+export const OnlyAdmin = [UserRole.ADMIN]
+export const OnlyUser = [UserRole.CUSTOMER]
