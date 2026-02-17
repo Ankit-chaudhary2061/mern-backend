@@ -57,8 +57,17 @@ brand: {
   type: mongoose.Schema.Types.ObjectId,
   ref: "Brand",
   required: true
-}
+},
+newArrival:{
+type:Boolean,
+default:true
 
+},
+stock:{
+  type:Number,
+  required: true
+  
+}
 
   },
   {

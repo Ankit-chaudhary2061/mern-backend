@@ -6,7 +6,7 @@ import { createOtp, resend_Otp } from "../../utils/otp-utils";
 import { sendMail } from "../../utils/send-mail";
 import { otpVerificationHtml } from "../../utils/email-utils";
 import { signAccessToken } from "../../utils/jwt-utills";
-import { access } from "fs";
+// import { access } from "fs";
 
 
 
