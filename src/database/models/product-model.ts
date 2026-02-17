@@ -29,8 +29,8 @@ const productSchema = new mongoose.Schema(
   },
   required: true
 },
- image: {
-  type: {
+image: [
+  {
     path: {
       type: String,
       required: true,
@@ -40,13 +40,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: true
     }
-  },
-  required: true
-},
-isFeatured:{
-    type:Boolean,
-    default:false
-},
+  }
+]
+,
+isFeatured: {
+  type: Boolean,
+  default: false
+}
+,
 
   category: {
   type: mongoose.Schema.Types.ObjectId,
