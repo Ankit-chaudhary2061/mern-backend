@@ -1,7 +1,8 @@
+import mongoose from "mongoose";
 import { UserRole } from "./enum-types";
 
 export interface IJwtPayload {
-  id: string;         
+  id: mongoose.Types.ObjectId;         
   role: UserRole;
   email: string;
 }
