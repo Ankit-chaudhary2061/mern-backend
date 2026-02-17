@@ -7,7 +7,7 @@ import userRoutes from './routes/user-route';
 import brandRoutes from './routes/brand-routes';
 import cookieParser from 'cookie-parser';
 import productRoutes from './routes/product-routes'
-
+import wishlistRoutes from './routes/wishlist-routes'
 
 const app = express();
 
@@ -18,6 +18,8 @@ app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', brandRoutes);
 app.use('/api', productRoutes);
+app.use('/api', wishlistRoutes);
+
 
 
 

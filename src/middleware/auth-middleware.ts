@@ -55,7 +55,11 @@ export const authenticate = (...role:UserRole[] ) => {
         });
       }
 
-     
+     req.user ={
+      id : user._id,
+      email:user.email,
+      role:user.role
+     }
    
       next();
 

@@ -124,7 +124,7 @@ static async login(req: Request, res: Response) {
       });
     }
     const access_token = signAccessToken({
-      id:user.id,
+      id:user._id ,
       email:user.email,
       role:user.role
     })
