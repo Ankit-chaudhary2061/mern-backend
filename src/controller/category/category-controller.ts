@@ -1,17 +1,41 @@
 import { Request, Response } from "express";
 import Category from "../../database/models/category-models";
+import { paginationMetaData } from "../../utils/pagination-utills";
 
 
 class CategoryController {
   // Get all categories
   static async getAllCategories(req: Request, res: Response) {
     try {
-      const categories = await Category.find();
+      const {query, page = 1, limit = 10}= req.query
+      const pageNum = parseInt(page as string, 10)
+      const pageLimit = parseInt(limit as string,10)
+      const skip = (pageNum - 1) * pageLimit
+
+     const filter: Record<string, any> = {};
+
+    if (query && String(query).trim() !== "") {
+  filter.$or = [
+    { tittle: { $regex: query, $options: "i" } },
+    { description: { $regex: query, $options: "i" } }
+  ];
+    }
+
+      const [categories, totalCount] = await Promise.all([
+  Category.find(filter)
+    .limit(pageLimit)
+    .skip(skip)
+    .sort({ createdAt: -1 }),
+
+  Category.countDocuments(filter)
+]);
 
       res.status(200).json({
         success: true,
         count: categories.length,
-        data: categories
+        data: categories,
+        pagination:paginationMetaData(pageNum, pageLimit, totalCount),
+        message:'categories fetched successfully'
       });
     } catch (error: any) {
       res.status(500).json({

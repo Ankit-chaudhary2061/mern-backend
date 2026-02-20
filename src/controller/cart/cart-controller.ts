@@ -216,7 +216,18 @@ static async getCart(req: Request, res: Response) {
       });
     }
 
-    const cart = await Cart.findOne({ user: userId }).populate("items.product");
+    const cart = await Cart.findOne({ user: userId })
+      .populate({
+        path: "items.product",
+        populate: [
+          { path: "category", select: "name" },
+          { path: "brand", select: "name logo" }
+        ]
+      })
+      .populate({
+        path: "user",
+        select: "_id username email role profileImage"
+      });
 
     if (!cart || cart.items.length === 0) {
       return res.status(200).json({
@@ -229,7 +240,7 @@ static async getCart(req: Request, res: Response) {
     return res.status(200).json({
       success: true,
       data: cart,
-      message:'fetch cart'
+      message: "Fetch cart",
     });
 
   } catch (error) {
@@ -240,6 +251,7 @@ static async getCart(req: Request, res: Response) {
     });
   }
 }
+
 
 
 }

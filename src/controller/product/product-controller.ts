@@ -4,6 +4,7 @@ import Product from '../../database/models/product-model';
 import Category from '../../database/models/category-models';
 import { Brand } from '../../database/models/brand-model';
 import { deleteFromCloudinary } from '../../middleware/middleware-cloudinary';
+import { paginationMetaData } from '../../utils/pagination-utills';
 interface IExpressFile{
   coverImage?:Express.Multer.File[],
   image?:Express.Multer.File[],
@@ -14,14 +15,55 @@ class ProductController {
   // Get all products
   static async getAllProducts(req: Request, res: Response) {
     try {
-      const products = await Product.find()
-        .populate('category')
-        .populate('brand');
+      const {page=1, limit = 10 , query, category, brand, minPrice , maxprice}=req.query
+      const filter:Record <string, any > = {}
+      const pageNum = parseInt(page as string, 10)
+      const pageLimit = parseInt (limit as string, 10)
+      const skip =  (pageNum - 1) *pageLimit
+      if(query && String(query).trim() !== ''){
+        filter.$or=[{
+          name:{
+            $regex:query,
+            $options:'i'
+          },
+          description:{
+            $regex:query,
+            $options:'i'
+          }
+        }]
+      }
+      if(category){
+        filter.category = category
+      }
+      if(brand){
+        filter.brand = brand
+      }
+      if (minPrice || maxprice) {
+      filter.price = {};
 
+      if (minPrice) {
+        filter.price.$gte = parseInt(minPrice as string, 10);
+      }
+
+      if (maxprice) {
+        filter.price.$lte = parseInt(maxprice as string, 10);
+      }
+    }
+       const [products, totalCount] = await Promise.all([
+      Product.find(filter)
+        .populate('category')
+        .populate('brand')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pageLimit),
+
+      Product.countDocuments(filter)
+    ]);
       res.status(200).json({
         success: true,
         count: products.length,
-        data: products
+        data: products,
+        pagination : paginationMetaData(pageNum, pageLimit, totalCount)
       });
     } catch (error: any) {
       res.status(500).json({

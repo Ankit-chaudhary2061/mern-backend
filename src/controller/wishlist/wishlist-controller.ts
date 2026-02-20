@@ -69,7 +69,7 @@ static async getAllWishlist(req: Request, res: Response) {
     }
 
   
-    const list = await WishList.find({ user: userId }).populate("product");
+    const list = await WishList.find({ user: userId }).populate("product").populate('user');
 
     return res.status(200).json({
       success: true,
