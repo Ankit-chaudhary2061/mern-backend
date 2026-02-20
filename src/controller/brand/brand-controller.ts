@@ -1,28 +1,53 @@
 import { Request, Response } from "express";
 import { Brand } from "../../database/models/brand-model";
 import storage, { deleteFromCloudinary } from "../../middleware/middleware-cloudinary";
+import { paginationMetaData } from "../../utils/pagination-utills";
 
 class BrandController {
-  static async getAllBrand(req: Request, res: Response) {
-    try {
-      const brands = await Brand.find();
+static async getAllBrand(req: Request, res: Response) {
+  try {
+    const { query, page = "1", limit = "10" } = req.query;
 
-      return res.status(200).json({
-        success: true,
-        count: brands.length,
-        data: brands,
-      });
+    const pageNum = parseInt(page as string, 10);
+    const pageLimit = parseInt(limit as string, 10);
+    const skip = (pageNum - 1) * pageLimit;
 
-    } catch (error: any) {
-      console.error("Get all brand error:", error);
+    const filter: Record<string, any> = {};
 
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch brands",
-        stack: error.stack,
-      });
+    if (query && String(query).trim() !== "") {
+      filter.$or = [
+        { name: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } }
+      ];
     }
+
+   const [brands, totalCount] = await Promise.all([
+  Brand.find(filter)
+    .limit(pageLimit)
+    .skip(skip)
+    .sort({ createdAt: -1 }),
+    
+  Brand.countDocuments(filter)
+]); 
+    return res.status(200).json({
+      success: true,
+      count: brands.length,
+      pagination:paginationMetaData(pageNum, pageLimit, totalCount),
+      data: brands,
+      message:'brands fetched'
+    });
+
+  } catch (error: any) {
+    console.error("Get all brand error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch brands",
+    });
   }
+}
+
+
   static async singleBrand(req: Request, res: Response) {
   try {
     const { id } = req.params;
