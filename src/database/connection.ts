@@ -8,7 +8,7 @@ if (!MONGO_URI) {
 }
 
 mongoose
-  .connect(MONGO_URI,{dbName:"broadwayDB",autoCreate:true})
+  .connect(MONGO_URI,{dbName:"rampokhDB",autoCreate:true})
   .then(() => {
     console.log("✅ MongoDB connected");
   })

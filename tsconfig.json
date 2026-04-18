@@ -81,8 +81,7 @@
     "verbatimModuleSyntax": false,
 
     "target": "ESNext",
-    "lib": ["ESNext"],
-    "types": ["node"],
+ 
 
     "sourceMap": true,
     "declaration": true,
@@ -96,5 +95,6 @@
 
     "noEmit": true
   },
-  "include": ["**/*.ts"]
+  "include": ["src"],
+  "exclude": ["node_modules"]
 }

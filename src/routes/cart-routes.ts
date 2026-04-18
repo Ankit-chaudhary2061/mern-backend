@@ -1,16 +1,15 @@
-import express, { Router } from "express";
-import { authenticate } from "../middleware/auth-middleware";
-import { OnlyUser } from "../types/global-types";
+import express from "express";
 import CartController from "../controller/cart/cart-controller";
 
+import { OnlyUser } from "../types/global-types";
+import { authenticate } from "../middleware/auth-middleware";
 
-const router:Router = express.Router()
+const router = express.Router();
 
-router.post('/cart/clear', authenticate(...OnlyUser),CartController.clearCart)
-router.post('/cart', authenticate(...OnlyUser),CartController.createCart)
-router.post('/removecart', authenticate(...OnlyUser),CartController.removeCart)
-router.get('/cart', authenticate(...OnlyUser),CartController.getCart)
+router.post("/", authenticate(...OnlyUser), CartController.addToCart);
+router.get("/", authenticate(...OnlyUser), CartController.getCart);
+router.patch("/:productId", authenticate(...OnlyUser), CartController.updateCartItem);
+router.delete("/:productId", authenticate(...OnlyUser), CartController.removeItem);
+router.delete("/", authenticate(...OnlyUser), CartController.clearCart);
 
-
-
-export default router
+export default router;

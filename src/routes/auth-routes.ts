@@ -15,6 +15,10 @@ router.post("/register",  upload.single("image"),AuthController.register);
 router.post("/login", AuthController.login);
 router.post("/verfiy-otp", AuthController.otpVerfication);
 router.post("/resend-otp", AuthController.resendOtp);
+router.post("/forgot-password", AuthController.forgotPassword);
+
+// Reset password
+router.post("/reset-password", AuthController.resetPassword);
 
 
 

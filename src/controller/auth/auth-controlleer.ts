@@ -6,6 +6,7 @@ import { createOtp, resend_Otp } from "../../utils/otp-utils";
 import { sendMail } from "../../utils/send-mail";
 import { otpVerificationHtml } from "../../utils/email-utils";
 import { signAccessToken } from "../../utils/jwt-utills";
+import crypto from 'crypto';
 // import { access } from "fs";
 
 
@@ -272,6 +273,130 @@ if (user.isVerified) {
       success: false,
       message: "Failed to resend OTP",
       stack: error.stack,
+    });
+  }
+}
+static async logout(req: Request, res: Response) {
+  try {
+    
+    res.clearCookie("access_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
+
+  } catch (error) {
+    console.error("Logout Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+static async forgotPassword(req:Request, res:Response){
+  try {
+    const{email}=req.body;
+     if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+    const user = await User.findOne({email})
+     if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+     const resetToken = crypto.randomBytes(20).toString("hex");
+    const resetTokenHash = await bcrypt.hash(resetToken, 12); // store hash
+    const resetTokenExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min expiry
+
+    user.resetPasswordToken = resetTokenHash;
+    user.resetPasswordExpires = resetTokenExpires;
+
+    await user.save();
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}?email=${user.email}`;
+    await sendMail({
+      to: user.email,
+      subject: "Password Reset Request",
+      html: `
+        <p>Hi ${user.username},</p>
+        <p>Click the link below to reset your password. The link is valid for 15 minutes.</p>
+        <a href="${resetLink}" target="_blank">Reset Password</a>
+      `,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset link sent to your email ",
+      resetToken: resetToken
+    });
+  }catch (error) {
+    console.error("Forgot Password Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+static async resetPassword (req:Request, res:Response){
+try {
+  const{token, email , newPassword}=req.body
+   if (!email || !token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+    const user = await User.findOne({ email }).select("+resetPasswordToken +resetPasswordExpires");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+     if (!user.resetPasswordToken || !user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {
+      return res.status(400).json({
+        success: false,
+        message: "Token is invalid or expired",
+      });
+    }
+     const isTokenValid = await bcrypt.compare(token, user.resetPasswordToken);
+    if (!isTokenValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid token",
+      });
+    }
+// Update password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    user.password = hashedPassword;
+console.log("DB Token:", user.resetPasswordToken);
+console.log("Request Token:", token);
+    // Clear reset token
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
     });
   }
 }
