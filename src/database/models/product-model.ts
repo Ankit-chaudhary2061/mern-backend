@@ -54,11 +54,11 @@ isFeatured: {
   ref: "Category", 
   required: true
 },
-brand: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "Brand",
-  required: true
-},
+// brand: {
+//   type: mongoose.Schema.Types.ObjectId,
+//   ref: "Brand",
+//   required: true
+// },
 newArrival:{
 type:Boolean,
 default:true

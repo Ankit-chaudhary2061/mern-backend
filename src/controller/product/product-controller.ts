@@ -116,7 +116,7 @@ static async createProduct(req: Request, res: Response) {
       name,
       description,
       category,
-      brand,
+    
       isFeatured,
       stock,
       newArrival,
@@ -149,13 +149,7 @@ static async createProduct(req: Request, res: Response) {
       });
     }
 
-    const productBrand = await Brand.findOne({ where: { id: brand } });
-    if (!productBrand) {
-      return res.status(404).json({
-        success: false,
-        message: "Brand not found",
-      });
-    }
+
 
     const coverImage = {
       path: coverImageFile.path,
@@ -171,7 +165,7 @@ static async createProduct(req: Request, res: Response) {
   name,
   description,
   category: productCategory.id,
-  brand: productBrand.id,
+
   isFeatured,
   stock,
   newArrival,
@@ -226,16 +220,7 @@ static async updateProduct(req:Request, res:Response){
         }
         product.category = productCategory._id;
      }
-     if(brand){
-      const productBrand = await Brand.findById(brand)
-      if(!productBrand){
-        return res.status(404).json({
-          success:false,
-          message:'Brand not found'
-        })
-      }
-      product.brand = productBrand._id
-     }
+    
       if (name) product.name = name;
       if (description) product.description = description;
       if (stock !== undefined) product.stock = stock;

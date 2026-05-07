@@ -41,7 +41,8 @@ export const authenticate = (...role:UserRole[] ) => {
   }
 
 
-      const user = await User.findOne({where:{email :decoded.email}});
+const user = await User.findOne({ email: decoded.email });
+
       if (!user) {
         return res.status(404).json({
           success: false,
