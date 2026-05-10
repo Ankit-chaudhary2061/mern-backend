@@ -5,74 +5,78 @@ const productSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true 
+      trim: true,
     },
+
     description: {
       type: String,
-      trim: true
+      trim: true,
     },
+
     price: {
       type: Number,
-      required: true
-    },
-  coverImage: {
-  type: {
-    path: {
-      type: String,
       required: true,
-      trim: true
     },
-    publicId: {
-      type: String,
-      required: true
-    }
-  },
-  required: true
-},
-image: [
-  {
-    path: {
-      type: String,
+
+    coverImage: {
+      type: {
+        path: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        publicId: {
+          type: String,
+          required: true,
+        },
+      },
       required: true,
-      trim: true
     },
-    publicId: {
-      type: String,
-      required: true
-    }
-  }
-]
-,
-isFeatured: {
-  type: Boolean,
-  default: false
-}
-,
 
-  category: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "Category", 
-  required: true
-},
-// brand: {
-//   type: mongoose.Schema.Types.ObjectId,
-//   ref: "Brand",
-//   required: true
-// },
-newArrival:{
-type:Boolean,
-default:true
+    image: [
+      {
+        path: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        publicId: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
 
-},
-stock:{
-  type:Number,
-  required: true
-  
-}
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
 
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
+
+    newArrival: {
+      type: Boolean,
+      default: true,
+    },
+
+    stock: {
+      type: Number,
+      required: true,
+    },
+
+   
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 

@@ -13,32 +13,49 @@ interface IExpressFile{
 
 class ProductController {
   // Get all products
-  static async getAllProducts(req: Request, res: Response) {
-    try {
-      const {page=1, limit = 10 , query, category, brand, minPrice , maxprice}=req.query
-      const filter:Record <string, any > = {}
-      const pageNum = parseInt(page as string, 10)
-      const pageLimit = parseInt (limit as string, 10)
-      const skip =  (pageNum - 1) *pageLimit
-      if(query && String(query).trim() !== ''){
-        filter.$or=[{
-          name:{
-            $regex:query,
-            $options:'i'
+static async getAllProducts(req: Request, res: Response) {
+  try {
+    const {
+      page = 1,
+      limit = 3,
+      query,
+      category,
+      minPrice,
+      maxprice,
+    } = req.query;
+
+    const filter: Record<string, any> = {};
+
+    const pageNum = parseInt(page as string, 10);
+    const pageLimit = parseInt(limit as string, 10);
+
+    const skip = (pageNum - 1) * pageLimit;
+
+    // Search
+    if (query && String(query).trim() !== '') {
+      filter.$or = [
+        {
+          name: {
+            $regex: query,
+            $options: 'i',
           },
-          description:{
-            $regex:query,
-            $options:'i'
-          }
-        }]
-      }
-      if(category){
-        filter.category = category
-      }
-      if(brand){
-        filter.brand = brand
-      }
-      if (minPrice || maxprice) {
+        },
+        {
+          description: {
+            $regex: query,
+            $options: 'i',
+          },
+        },
+      ];
+    }
+
+    // Category filter
+    if (category) {
+      filter.category = category;
+    }
+
+    // Price filter
+    if (minPrice || maxprice) {
       filter.price = {};
 
       if (minPrice) {
@@ -49,30 +66,37 @@ class ProductController {
         filter.price.$lte = parseInt(maxprice as string, 10);
       }
     }
-       const [products, totalCount] = await Promise.all([
+
+    const [products, totalCount] = await Promise.all([
       Product.find(filter)
         .populate('category')
-        .populate('brand')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(pageLimit),
 
-      Product.countDocuments(filter)
+      Product.countDocuments(filter),
     ]);
-      res.status(200).json({
-        success: true,
-        count: products.length,
-        data: products,
-        pagination : paginationMetaData(pageNum, pageLimit, totalCount)
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: 'Server Error',
-        error: error.message
-      });
-    }
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      data: products,
+
+      pagination: paginationMetaData(
+        pageNum,
+        pageLimit,
+        totalCount
+      ),
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message,
+    });
   }
+}
  static async singleProduct(req: Request, res: Response) {
   try {
     const { id } = req.params;
@@ -86,7 +110,7 @@ class ProductController {
 
     const product = await Product.findById(id)
       .populate("category")
-      .populate("brand");
+   
 
     if (!product) {
       return res.status(404).json({
@@ -112,11 +136,18 @@ class ProductController {
 }
 static async createProduct(req: Request, res: Response) {
   try {
+    const userId = req.user?.id 
+    if(!userId){
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: User not authenticated"
+      });
+    }
     const {
       name,
       description,
       category,
-    
+      price,
       isFeatured,
       stock,
       newArrival,
@@ -130,6 +161,8 @@ static async createProduct(req: Request, res: Response) {
     if (
       !name ||
       !description ||
+      !category ||
+      !price ||
       stock === undefined ||
       !coverImageFile ||
       !imageFiles ||
@@ -141,7 +174,9 @@ static async createProduct(req: Request, res: Response) {
       });
     }
 
-    const productCategory = await Category.findOne({ where: { id: category } });
+    // Check category
+    const productCategory = await Category.findById(category);
+
     if (!productCategory) {
       return res.status(404).json({
         success: false,
@@ -149,30 +184,33 @@ static async createProduct(req: Request, res: Response) {
       });
     }
 
-
-
+    // Cover image
     const coverImage = {
       path: coverImageFile.path,
       publicId: coverImageFile.filename,
     };
 
+    // Multiple images
     const images = imageFiles.map((file) => ({
       path: file.path,
       publicId: file.filename,
     }));
 
-  const product = await Product.create({
-  name,
-  description,
-  category: productCategory.id,
+    // Create product
+    const product = await Product.create({
+      name,
+      description,
+      category: productCategory._id,
+      price,
+      isFeatured,
+      stock,
+      newArrival,
+      coverImage,
+      image: images,
 
-  isFeatured,
-  stock,
-  newArrival,
-  coverImage,
-  image: images,
-});
-
+      // Assuming user is logged in
+      createdBy:userId
+    });
 
     return res.status(201).json({
       success: true,
@@ -182,6 +220,7 @@ static async createProduct(req: Request, res: Response) {
 
   } catch (error: any) {
     console.error("Create product error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server Error",
