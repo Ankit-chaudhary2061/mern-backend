@@ -13,9 +13,11 @@ const router:Router =  express.Router();
 
 router.post("/register",  upload.single("image"),AuthController.register);
 router.post("/login", AuthController.login);
-router.post("/verfiy-otp", AuthController.otpVerfication);
+router.post("/verify-otp", AuthController.otpVerification);
 router.post("/resend-otp", AuthController.resendOtp);
 router.post("/forgot-password", AuthController.forgotPassword);
+router.post("/logout", AuthController.logout);
+router.get("/me", AuthController.me);
 
 // Reset password
 router.post("/reset-password", AuthController.resetPassword);

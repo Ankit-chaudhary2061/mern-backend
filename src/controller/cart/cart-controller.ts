@@ -4,49 +4,58 @@ import Cart from "../../database/models/cart-model";
 class CartController {
 
 
-  static async addToCart(req: Request, res: Response) {
-    try {
-      const userId = req.user?.id;
-      const { productId, quantity = 1 } = req.body;
+ static async addToCart(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
 
-      if (!userId || !productId) {
-        return res.status(400).json({
-          success: false,
-          message: "User and Product ID required",
-        });
-      }
+    const productId = req.body.productId?.trim();
 
-      let cart = await Cart.findOne({ user: userId });
+    const quantity = req.body.quantity || 1;
 
-      if (!cart) {
-        cart = new Cart({
-          user: userId,
-          items: [{ product: productId, quantity }],
-        });
-      } else {
-        const index = cart.items.findIndex(
-          item => item.product.toString() === productId
-        );
-
-        if (index > -1) {
-          cart.items[index].quantity += quantity;
-        } else {
-          cart.items.push({ product: productId, quantity });
-        }
-      }
-
-      await cart.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Added to cart 🛒",
-        data: cart,
+    if (!userId || !productId) {
+      return res.status(400).json({
+        success: false,
+        message: "User and Product ID required",
       });
-
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
     }
+
+    let cart = await Cart.findOne({ user: userId });
+
+    if (!cart) {
+      cart = new Cart({
+        user: userId,
+        items: [{ product: productId, quantity }],
+      });
+    } else {
+      const index = cart.items.findIndex(
+        (item) => item.product.toString() === productId
+      );
+
+      if (index > -1) {
+        cart.items[index].quantity += quantity;
+      } else {
+        cart.items.push({
+          product: productId,
+          quantity,
+        });
+      }
+    }
+
+    await cart.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Added to cart 🛒",
+      data: cart,
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
+}
 
 
   static async getCart(req: Request, res: Response) {

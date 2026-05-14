@@ -61,7 +61,8 @@ otp: {
   select: false
 },
 otpExpires: {
-  type: Date
+  type: Date,
+  select: false
 }, 
 resetPasswordToken: {
   type: String,

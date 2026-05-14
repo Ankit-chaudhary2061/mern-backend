@@ -7,6 +7,8 @@ import { sendMail } from "../../utils/send-mail";
 import { otpVerificationHtml } from "../../utils/email-utils";
 import { signAccessToken } from "../../utils/jwt-utills";
 import crypto from 'crypto';
+import jwt from "jsonwebtoken";
+import { IJwtPayload } from "../../types/global-types";
 // import { access } from "fs";
 
 
@@ -52,7 +54,7 @@ class AuthController {
       password: hashedPassword,
       role: UserRole.CUSTOMER,
       otp: otpHash,
-      otpExpires: Date.now() + 5 * 60 * 1000, 
+      otpExpires: new Date(Date.now() + 5 * 60 * 1000),
       profileImage: imageUrl ? { url: imageUrl } : null,
     });
 await sendMail({
@@ -60,10 +62,6 @@ await sendMail({
   subject: "Verify Your Email - OTP Code",
   html: otpVerificationHtml(user, otp),
 });
-
-
-
-   await user.save()
 
     res.status(201).json({
       success: true,
@@ -129,23 +127,20 @@ static async login(req: Request, res: Response) {
       email:user.email,
       role:user.role
     })
-    res.cookie('access_token', access_token,{
-      httpOnly:process.env.NODE_ENV === 'development' ? false:true,
-      sameSite:process.env.NODE_ENV === 'development' ? 'lax':'none',
-      secure:process.env.NODE_ENV === 'development' ? false:true,
-      maxAge: 30 * 24 * 60 * 60 * 1000  
-
-
-    }).status(200).json({
+  res.cookie("access_token", access_token, {
+  httpOnly: true,
+  secure: true, // HTTPS only
+  sameSite: "none", // required for cross-site frontend/backend
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+}).status(200).json({
       success: true,
       message: "Login successful",
-      data: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        token:access_token
-      },
+    data: {
+  id: user._id,
+  username: user.username,
+  email: user.email,
+  role: user.role
+},
     });
 
   } catch (error: any) {
@@ -158,83 +153,98 @@ static async login(req: Request, res: Response) {
   }
 }
 
- static async otpVerfication(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-          try {
-           const { email, otp } = req.body;
+ static async otpVerification(req: Request, res: Response) {
+    try {
+      const { email, otp } = req.body;
 
-    if (!email || !otp) {
-      return res.status(400).json({
+      // Validation
+      if (!email || !otp) {
+        return res.status(400).json({
+          success: false,
+          message: "Email and OTP are required",
+        });
+      }
+
+      // Find user
+      const user = await User.findOne({ email }).select(
+        "+otp +otpExpires"
+      );
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // OTP existence check
+      if (!user.otp || !user.otpExpires) {
+        return res.status(400).json({
+          success: false,
+          message: "OTP not found. Please request a new OTP.",
+        });
+      }
+
+      // Expiry check
+      if (Date.now() > user.otpExpires.getTime()) {
+        return res.status(400).json({
+          success: false,
+          message: "OTP expired. Please request a new OTP.",
+        });
+      }
+
+      // Debug logs
+      console.log("=================================");
+      console.log("Entered OTP:", otp.toString().trim());
+      console.log("Database Hash:", user.otp);
+
+      // Compare OTP
+      const otpMatched = await bcrypt.compare(
+        otp.toString().trim(),
+        user.otp
+      );
+
+      console.log("Matched:", otpMatched);
+      console.log("=================================");
+
+      // Invalid OTP
+      if (!otpMatched) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP",
+        });
+      }
+
+      // Verify account
+      user.isVerified = true;
+
+      user.set({
+        otp: null,
+        otpExpires: null,
+      });
+
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Account verified successfully",
+      });
+
+    } catch (error: any) {
+      console.error("OTP VERIFY ERROR:", error);
+
+      return res.status(500).json({
         success: false,
-        message: "Email and OTP are required",
+        message: "Server Error",
+        stack: error.stack,
       });
     }
-   const user = await User.findOne({ email }).select("+otp +otpExpires");
-
-if (!user) {
-  return res.status(404).json({
-    success: false,
-    message: "User not found",
-  });
-}
-if (!user.otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
-
-    if (user.otpExpires) {
-  const isOtpExpired = new Date(Date.now()) > user.otpExpires;
-
-  if (isOtpExpired) {
-    return res.status(400).json({
-      success: false,
-      message: "OTP has expired. Please request a new one.",
-    });
   }
-}
-  const otpMatch = await bcrypt.compare(otp, user.otp);
-
-    if (!otpMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
-
-    user.isVerified = true;
-    user.otp = undefined;
-    user.otpExpires = undefined;
-
-    await user.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Email verified successfully 🎉",
-    });
-
-  } catch (error: any) {
-    console.error("OTP verification error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      stack: error.stack,
-    });
-  }
-}
-static async resendOtp(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
+static async resendOtp(req: Request, res: Response) {
   try {
     const { email } = req.body;
 
- 
+  
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -243,7 +253,7 @@ static async resendOtp(
     }
 
  
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+otp +otpExpires");
 
     if (!user) {
       return res.status(404).json({
@@ -251,28 +261,28 @@ static async resendOtp(
         message: "User not found",
       });
     }
-if (user.isVerified) {
-  return res.status(400).json({
-    success: false,
-    message: "User already verified. No need to resend OTP.",
-  });
-}
 
- 
+   
+    if (user.isVerified) {
+      return res.status(200).json({
+        success: true,
+        message: "Account is already verified",
+      });
+    }
+
+  
     await resend_Otp(user);
 
-    
     return res.status(200).json({
       success: true,
-      message: "New OTP sent successfully to your email",
+      message: "New OTP has been sent to your email",
     });
 
-  } catch (error: any) {
-    console.error("Resend OTP error:", error);
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({
       success: false,
-      message: "Failed to resend OTP",
-      stack: error.stack,
+      message: "Server error",
     });
   }
 }
@@ -397,6 +407,42 @@ console.log("Request Token:", token);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+    });
+  }
+}
+static async me(req: Request, res: Response) {
+  try {
+    const token = req.cookies.access_token;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        user: null,
+      });
+    }
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET!) as IJwtPayload;
+
+const userId = decoded.id;
+
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        user: null,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      user: null,
     });
   }
 }

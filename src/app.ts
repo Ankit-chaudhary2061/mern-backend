@@ -14,6 +14,7 @@ import productRoutes from "./routes/product-routes";
 import emailRoutes from "./routes/email-routes";
 import cartRoutes from "./routes/cart-routes";
 import orderRoutes from "./routes/order-routes";
+import galleryRoutes from "./routes/gallery-routes";
 const app = express();
 
 // CORS
@@ -36,6 +37,7 @@ app.use("/api", productRoutes);
 app.use("/api", emailRoutes);
 app.use("/api", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api", galleryRoutes);
 
 
 export default app;
