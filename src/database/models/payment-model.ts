@@ -20,11 +20,11 @@ const paymentSchema = new mongoose.Schema(
       min: 0,
     },
 
-    paymentMethod: {
-      type: String,
-      enum: ["esewa", "khalti", "cod"],
-      required: true,
-    },
+   paymentMethod: {
+  type: String,
+ enum: ["cod", "esewa", "khalti"],
+  required: true,
+},
 
     paymentStatus: {
       type: String,

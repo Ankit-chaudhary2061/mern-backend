@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { OrderStatus } from "../../types/order-types";
 
 const orderSchema = new mongoose.Schema(
   {
@@ -27,8 +28,8 @@ const orderSchema = new mongoose.Schema(
 
     orderStatus: {
       type: String,
-      enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
-      default: "pending",
+      enum: Object.values(OrderStatus).filter(status => status !== OrderStatus.ALL),
+      default: OrderStatus.PENDING,
     },
 
  

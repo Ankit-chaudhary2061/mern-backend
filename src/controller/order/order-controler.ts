@@ -69,15 +69,12 @@ static async createOrder(req: Request, res: Response) {
       orderItems.push(item);
 
   
-      await Cart.updateOne(
-        { user: userId },
-        {
-          $pull: {
-            items: { product: items[i].productId },
-          },
-        }
-      );
+;
     }
+    await Cart.findOneAndUpdate(
+  { user: userId },
+  { $set: { items: [] } }
+);
 
   
     const payment = await Payment.create({
@@ -154,6 +151,7 @@ static async createOrder(req: Request, res: Response) {
           },
         }
       );
+        console.log(response)
 
       const khaltiData: KhaltiResponse = response.data;
 
@@ -331,10 +329,24 @@ try {
         message: "Unauthorized",
       });
     }
+    const { page = 1, limit = 4 } = req.query;
 
+    const pageNum = parseInt(page as string, 10) || 1;
+    const pageLimit = parseInt(limit as string, 10) || 4;
+
+    const skip = (pageNum - 1) * pageLimit;
+
+    // 📊 total count
+    const totalCount = await Order.countDocuments({
+      user: userId,
+    });
+
+    // 📦 orders
     const orders = await Order.find({ user: userId })
       .populate("payment")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageLimit);
 
     return res.status(200).json({
       success: true,
@@ -554,23 +566,12 @@ static async cancelOrder(req: Request, res: Response) {
 static async deleteOrder(req: Request, res: Response) {
   try {
     const orderId = req.params.id;
-    const userId = req.user?.id;
 
     const order = await Order.findById(orderId);
 
     if (!order) {
-      return res.status(404).json({
-        message: "Order not found",
-      });
+      return res.status(404).json({ message: "Order not found" });
     }
-
-    // 🔐 Authorization (user can delete only own order)
-    if (order.user.toString() !== userId?.toString()) {
-      return res.status(403).json({
-        message: "Unauthorized",
-      });
-    }
-
 
     if (
       order.orderStatus === OrderStatus.SHIPPED ||
@@ -581,15 +582,12 @@ static async deleteOrder(req: Request, res: Response) {
       });
     }
 
-   
     await OrderDetails.deleteMany({ order: orderId });
 
-   
     if (order.payment) {
       await Payment.findByIdAndDelete(order.payment);
     }
 
-  
     await order.deleteOne();
 
     return res.status(200).json({
@@ -598,7 +596,7 @@ static async deleteOrder(req: Request, res: Response) {
     });
 
   } catch (error) {
-    console.error("Delete Order Error:", error);
+    console.error(error);
     return res.status(500).json({
       success: false,
       message: "Failed to delete order",

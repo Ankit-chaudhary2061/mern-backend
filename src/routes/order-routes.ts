@@ -27,7 +27,7 @@ router.patch("/payment-status/:id", authenticate(...OnlyUser), OrderController.p
 
 // ================= CANCEL =================
 router.patch("/cancel/:id", authenticate(...OnlyAdmin), OrderController.cancelOrder);
-router.patch("/delete/:id", authenticate(...OnlyAdmin), OrderController.deleteOrder);
+router.delete("/delete/:id", authenticate(...OnlyAdmin), OrderController.deleteOrder);
 
 
 export default router;
