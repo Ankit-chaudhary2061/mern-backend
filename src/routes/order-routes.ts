@@ -12,7 +12,7 @@ router.post("/create", authenticate(...OnlyUser), OrderController.createOrder);
 
 // ================= PAYMENT VERIFICATION =================
 router.get("/verify-esewa",authenticate(...OnlyUser), OrderController.verifyEsewaPayment);
-router.post("/verify-khalti", authenticate(...OnlyUser),OrderController.verfiyKhaltiPayment);
+router.post("/verify-khalti", OrderController.verfiyKhaltiPayment);
 
 // ================= ORDER FETCH =================
 router.get("/", authenticate(...OnlyAdmin), OrderController.getOrder); // admin / all orders

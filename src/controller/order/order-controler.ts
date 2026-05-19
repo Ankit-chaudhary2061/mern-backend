@@ -13,6 +13,10 @@ class OrderController{
 
 
 static async createOrder(req: Request, res: Response) {
+  let order: any = null;
+  let payment: any = null;
+  let orderItems: any = [];
+
   try {
     const userId = req.user?.id;
 
@@ -24,7 +28,7 @@ static async createOrder(req: Request, res: Response) {
       items,
     }: OrderData = req.body;
 
-  
+    // Validation
     if (
       !userId ||
       !shippingAddress ||
@@ -39,45 +43,51 @@ static async createOrder(req: Request, res: Response) {
       });
     }
 
+    // Validate environment variables for payment method
+    if (paymentDetails.paymentMethod === PaymentMethod.ESEWA) {
+      if (!process.env.ESEWA_MERCHANT_ID || !process.env.ESEWA_SECRET_KEY) {
+        return res.status(500).json({
+          message: "eSewa configuration incomplete",
+        });
+      }
+    }
 
-    const order = await Order.create({
+    if (paymentDetails.paymentMethod === PaymentMethod.KHALTI) {
+      if (!process.env.KHALTI_SECRET_KEY) {
+        return res.status(500).json({
+          message: "Khalti configuration incomplete",
+        });
+      }
+    }
+
+    // Create order
+    order = await Order.create({
       user: userId,
       shippingAddress,
       phoneNumber,
       totalAmount,
     });
 
-  
-    const orderItems: any[] = [];
+    // Create order items
+    orderItems = await Promise.all(
+      items.map(async (item) => {
+        const product = await Product.findById(item.productId);
 
-    for (let i = 0; i < items.length; i++) {
-      const product = await Product.findById(items[i].productId);
+        if (!product) {
+          throw new Error(`Product not found: ${item.productId}`);
+        }
 
-      if (!product) {
-        return res.status(404).json({
-          message: `Product not found: ${items[i].productId}`,
+        return await OrderDetails.create({
+          order: order._id,
+          product: product._id,
+          quantity: item.quantity,
+          price: product.price,
         });
-      }
+      })
+    );
 
-      const item = await OrderDetails.create({
-        order: order._id,
-        product: product._id,
-        quantity: items[i].quantity,
-        price: product.price,
-      });
-
-      orderItems.push(item);
-
-  
-;
-    }
-    await Cart.findOneAndUpdate(
-  { user: userId },
-  { $set: { items: [] } }
-);
-
-  
-    const payment = await Payment.create({
+    // Create payment record BEFORE initiating payment
+    payment = await Payment.create({
       user: userId,
       order: order._id,
       amount: totalAmount,
@@ -88,19 +98,16 @@ static async createOrder(req: Request, res: Response) {
     order.payment = payment._id;
     await order.save();
 
-  
-
     // ================= eSewa =================
     if (paymentDetails.paymentMethod === PaymentMethod.ESEWA) {
       const transaction_uuid = order._id.toString();
       const amount = Number(totalAmount);
 
-      const product_code = process.env.ESEWA_MERCHANT_ID;
-
+      const product_code = process.env.ESEWA_MERCHANT_ID!;
       const signatureString = `total_amount=${amount},transaction_uuid=${transaction_uuid},product_code=${product_code}`;
 
       const signature = crypto
-        .createHmac("sha256", process.env.ESEWA_SECRET_KEY as string)
+        .createHmac("sha256", process.env.ESEWA_SECRET_KEY!)
         .update(signatureString)
         .digest("base64");
 
@@ -114,8 +121,7 @@ static async createOrder(req: Request, res: Response) {
         product_delivery_charge: 0,
         success_url: process.env.ESEWA_SUCCESS_URL,
         failure_url: process.env.ESEWA_FAILURE_URL,
-        signed_field_names:
-          "total_amount,transaction_uuid,product_code",
+        signed_field_names: "total_amount,transaction_uuid,product_code",
         signature,
       };
 
@@ -125,47 +131,84 @@ static async createOrder(req: Request, res: Response) {
 
       return res.status(200).json({
         message: "eSewa payment initiated",
-        payment_url:
-          "https://epay.esewa.com.np/api/epay/main/v2/form",
+        payment_url: "https://epay.esewa.com.np/api/epay/main/v2/form",
         data: formData,
       });
     }
 
     // ================= Khalti =================
     if (paymentDetails.paymentMethod === PaymentMethod.KHALTI) {
-      const data = {
-        return_url: "http://localhost:3000/success",
-        website_url: "http://localhost:3001/",
-        amount: Number(totalAmount) * 100,
-        purchase_order_id: order._id.toString(),
-        purchase_order_name: `order_${order._id}`,
-      };
+      try {
+        const khaltiSecretKey = process.env.KHALTI_SECRET_KEY?.trim();
+        const successUrl = process.env.KHALTI_SUCCESS_URL || "http://localhost:3000/success";
+        const websiteUrl = process.env.KHALTI_WEBSITE_URL || "http://localhost:3000";
 
-      const response = await axios.post(
-        "https://dev.khalti.com/api/v2/epayment/initiate/",
-        data,
-        {
-          headers: {
-            Authorization: `Key ${process.env.KHALTI_SECRET_KEY}`,
-            "Content-Type": "application/json",
-          },
+        if (!khaltiSecretKey) {
+          throw new Error("Khalti secret key not configured");
         }
-      );
-        console.log(response)
 
-      const khaltiData: KhaltiResponse = response.data;
+        const data = {
+          return_url: successUrl,
+          website_url: websiteUrl,
+          amount: Number(totalAmount) * 100,
+          purchase_order_id: order._id.toString(),
+          purchase_order_name: `order_${order._id}`,
+        };
 
-      payment.pidx = khaltiData.pidx;
-      await payment.save();
+        const response = await axios.post(
+          "https://dev.khalti.com/api/v2/epayment/initiate/",
+          data,
+          {
+            timeout: 10000,
+            headers: {
+              Authorization: `Key ${khaltiSecretKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-      return res.status(200).json({
-        message: "Khalti payment initiated",
-        pidx: khaltiData.pidx,
-        payment_url: khaltiData.payment_url,
-      });
+        const khaltiData: KhaltiResponse = response.data;
+
+        if (!khaltiData.pidx) {
+          throw new Error("Khalti response missing pidx");
+        }
+
+        payment.pidx = khaltiData.pidx;
+        await payment.save();
+
+        // Clear cart only after successful payment initiation
+        await Cart.findOneAndUpdate(
+          { user: userId },
+          { $set: { items: [] } }
+        );
+
+        return res.status(200).json({
+          message: "Khalti payment initiated",
+          pidx: khaltiData.pidx,
+          payment_url: khaltiData.payment_url,
+        });
+      } catch (khaltiError: any) {
+        // Rollback on Khalti failure
+        await OrderDetails.deleteMany({ order: order._id });
+        await payment.deleteOne();
+        await order.deleteOne();
+
+        console.error("Khalti payment initiation failed:", khaltiError.message);
+        return res.status(500).json({
+          success: false,
+          message: "Khalti payment initiation failed",
+          error: khaltiError.message,
+        });
+      }
     }
 
     // ================= COD / Default =================
+    // Clear cart for COD payment
+    await Cart.findOneAndUpdate(
+      { user: userId },
+      { $set: { items: [] } }
+    );
+
     return res.status(201).json({
       success: true,
       message: "Order created successfully",
@@ -175,7 +218,14 @@ static async createOrder(req: Request, res: Response) {
     });
 
   } catch (error: any) {
-    console.error("Order error:", error);
+    // Rollback on any error
+    if (order) {
+      await OrderDetails.deleteMany({ order: order._id });
+      await payment?.deleteOne();
+      await order.deleteOne();
+    }
+
+    console.error("Order creation error:", error.message);
 
     return res.status(500).json({
       success: false,

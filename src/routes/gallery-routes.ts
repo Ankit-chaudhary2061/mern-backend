@@ -12,7 +12,7 @@ const upload = multer({
 const router: Router = express.Router();
 
 
-router.post('/upload', upload.fields([{ name: 'images', maxCount: 20 }]), authenticate(...OnlyAdmin), GalleryController.uploadImage);
+router.post('/upload', upload.array('images', 20), authenticate(...OnlyAdmin), GalleryController.uploadImage);
 router.get('/gallery', GalleryController.getGalley);
 router.delete('/delete/:publicId', authenticate(...OnlyAdmin), GalleryController.deleteImage);
 router.get('/gallery/:id', GalleryController.fetchSingleImage);
